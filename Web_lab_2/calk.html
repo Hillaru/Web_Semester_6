@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab2_WEB</title>
+</head>
+
+<body>
+
+
+    <style>
+        .section-inner {
+            display: flex;
+            justify-content: space-evenly;
+            flex-wrap: wrap;
+
+            width: 100%;
+            max-width: 800px;
+
+            margin: auto;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+
+            margin-bottom: 80px;
+        }
+    </style>
+
+    <section>
+        <h1 style="text-align:center">Калькулятор на webpack'e</h1>
+
+        <div class="section-inner">
+            <form id="form">
+                <select data-error="false" name="depositeType" id="depositeType">
+                    <option value="">Please chose the option</option>
+                    <option value="replenishable">Replenishable</option>
+                    <option value="emergency">Emergency</option>
+                </select>
+
+                <select date-error="false" name="depositeTerm" id="depositeTerm">
+                </select>
+
+                <input data-error="false" type="text" id="depositeAmount">
+
+                <button> submit </button>
+            </form>
+
+            <div style="width: 100%;">
+                <textarea style="display: block; margin: auto; width: 100%; max-width: 400px;" id="calculation_result"
+                    name="calculation_result" id="" cols="30" rows="10"></textarea>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        const $depositeType = document.getElementById('depositeType'),
+            $depositeTerm = document.getElementById('depositeTerm'),
+            $depositeAmount = document.getElementById('depositeAmount'),
+            $form = document.getElementById('form')
+        $calculationResult = document.getElementById('calculation_result');
+
+        const AVAIL_OPTIONS_FOR_deposite = {
+            replenishable: {
+                depositeTerm: [
+                    {
+                        value: '6 months - 20%',
+                        text: '6 months - 20%'
+                    },
+                    {
+                        value: '1 year - 22%',
+                        text: '1 year - 22%'
+                    },
+                    {
+                        value: '1.5 years - 15%',
+                        text: '1.5 years - 15%'
+                    },
+                    {
+                        value: '2 years - 10%',
+                        text: '2 years - 10%'
+                    },
+                ],
+            },
+            emergency: {
+                depositeTerm: [
+                    {
+                        value: '3 months - 23%',
+                        text: '3 month - 23%'
+                    },
+                    {
+                        value: '6 months - 22%',
+                        text: '6 months - 22%'
+                    },
+                    {
+                        value: '9 months - 23%',
+                        text: '9 months - 23%'
+                    },
+                    {
+                        value: '1 year - 24%',
+                        text: '1 year - 24%'
+                    },
+                    {
+                        value: '1.5 years - 18%',
+                        text: '1.5 years - 18%'
+                    },
+                    {
+                        value: '2 years - 15%',
+                        text: '2 years - 15%'
+                    },
+                ]
+            }
+        }
+
+        const getFormData = () => {
+            return {
+                depositeType: $depositeType.value,
+                depositeTerm: $depositeTerm.value,
+                depositeAmount: $depositeAmount.value
+            }
+        }
+
+        const setSelectOptions = ($select, arrayOfOptions) => {
+            const getOption = (value, text) => `<option value="${value}">${text}</option>`
+            $select.innerHTML = ''
+
+            for (const option of arrayOfOptions) {
+                $select.innerHTML += getOption(option.value, option.text)
+            }
+        }
+
+        const validDepositeType = (depositeType) => Object.keys(AVAIL_OPTIONS_FOR_deposite).includes(depositeType)
+
+        const changedepositeOptions = (depositeType) => {
+            if (!validDepositeType(depositeType)) {
+                return
+            }
+
+            const depositeTerm = AVAIL_OPTIONS_FOR_deposite[depositeType].depositeTerm
+            setSelectOptions($depositeTerm, depositeTerm)
+        }
+
+        const updateSelects = (event) => {
+            const selecteddepositeType = event.target.value
+            changedepositeOptions(selecteddepositeType)
+        }
+
+        const setErrorState = (nodeId, value) => {
+            const $node = document.getElementById(nodeId)
+            $node.setAttribute('data-error', value)
+        }
+
+
+        const getValidationSchema = (type) => {
+            return {
+                depositeType: (value) => Object.keys(AVAIL_OPTIONS_FOR_deposite).includes(value),
+                depositeTerm: (value) => AVAIL_OPTIONS_FOR_deposite[type] ? AVAIL_OPTIONS_FOR_deposite[type].depositeTerm.find((option) => option.value === value) !== null : false,
+                depositeAmount: (value) => /\d+/g.test(value)
+            }
+        }
+
+        const validateForm = (formData, validationSchema) => {
+            let formValid = true
+
+            for (const prop in formData) {
+                const validator = validationSchema[prop]
+                if (!validator(formData[prop])) {
+                    setErrorState(prop, true)
+                    formValid = false
+                }
+            }
+
+            return formValid
+        }
+
+        const clearForm = (formData) => {
+            for (const nodeId in formData) {
+                setErrorState(nodeId, false)
+            }
+        }
+
+        const timeIsYear = (depositeTerm) => depositeTerm.includes('year')
+
+        const calculateSumm = (depositeTerm, depositeSum) => {
+            const depositeParamsStrings = depositeTerm.split('-')
+            const depositeParamsNums = depositeParamsStrings.map((param) => parseFloat(param))
+
+            const depositePercentPerYear = depositeParamsNums[1]
+            let depositeTime = depositeParamsNums[0]
+
+            if (timeIsYear(depositeTerm)) {
+                depositeTime *= 12
+            }
+
+            const monthsInYear = 12
+            const fluenceCoef = depositePercentPerYear * (depositeTime / monthsInYear)
+
+            return (depositeSum * (1 + (fluenceCoef / 100))).toFixed(2)
+        }
+
+        $form.addEventListener('submit', (event) => {
+            event.preventDefault()
+            const formData = getFormData()
+
+            clearForm(formData)
+
+
+            const validationSchema = getValidationSchema(formData.depositeType)
+
+            if (!validateForm(formData, validationSchema)) {
+                return
+            }
+
+            const finalSum = calculateSumm(formData.depositeTerm, formData.depositeAmount)
+
+            let result = ''
+            for (const prop in formData) {
+                result += `${prop}: ${formData[prop]}\n`
+            }
+            result += 'final: ' + finalSum
+
+            $calculationResult.value = result
+        })
+
+        $depositeType.addEventListener('change', updateSelects)
+
+    </script>
+</body>
+
+</html>
